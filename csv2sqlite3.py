@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, sys
+import os
 import csv, sqlite3, argparse
 
 def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=True):
@@ -19,8 +19,12 @@ def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=T
 
 	with open(csvpath, 'rb') as f:
 		
-		# sample the data, then rewind
-		sample = f.read(4096)
+		# sample 100KB of data, then rewind
+		sample = ''
+		for i, line in enumerate(f):
+		    sample = sample + line
+		    if len(sample) > 100000:
+		        break
 		f.seek(0)
 
 		# sniff the sample data to guess the delimeters, etc
