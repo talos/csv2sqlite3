@@ -25,6 +25,8 @@ Usage
                             path to CREATE TABLE .sql file
       -z SAMPLE_SIZE, --sample_size SAMPLE_SIZE
                             how many rows to search to guess datatypes
+      -v VERBOSE, --verbosity VERBOSITY
+                            print to STDOUT info every VERBOSITY lines of import
 
 Example
 -------
@@ -45,3 +47,9 @@ Example
     $ sqlite3 test.db "SELECT name, age FROM test;"
     Alice|30
     Bob|35
+
+Performance Notes
+-----------------
+
+The `-n` switch vastly improves the speed of import for large files, particularly
+wide ones.

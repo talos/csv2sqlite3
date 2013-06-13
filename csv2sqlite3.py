@@ -1,9 +1,13 @@
 #!/usr/bin/python
 
-import os
+import os, sys
+import time
 import csv, sqlite3, argparse
 
-def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=True):
+def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=True,
+			samplesize=1000, verbosity=0):
+
+	start = time.time()
 
 	# /path/file.csv -> /path/file.db
 	if not dbpath:
@@ -19,11 +23,10 @@ def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=T
 
 	with open(csvpath, 'rb') as f:
 		
-		# sample 100KB of data, then rewind
 		sample = ''
 		for i, line in enumerate(f):
 		    sample = sample + line
-		    if len(sample) > 100000:
+		    if i >= samplesize:
 		        break
 		f.seek(0)
 
@@ -64,8 +67,16 @@ def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=T
 
 			# insert csv values
 			sql_insert = 'INSERT INTO `%s` VALUES (%s);' % (tablename, ','.join(['?']*len(fieldnames)))
-			for row in r:
+			for i, row in enumerate(r):
+				if verbosity and i % verbosity == 0:
+					sys.stdout.write("Inserted {0} rows in {1} seconds\n".format( i, time.time() - start))
 				c.execute(sql_insert, [x if len(x)>0 else None for x in row] if guessdatatypes else row)
+				total_rows = i
+
+			if verbosity:
+				sys.stdout.write("Complete: inserted {0} rows in {1} seconds\n".format(
+					total_rows, time.time() - start))
+
 
 def guess_datatypes(csvreader, max=100):
 	types = []
@@ -97,6 +108,9 @@ if __name__ == '__main__':
 	parser.add_argument('-t', '--table_name', help='name of the table')
 	parser.add_argument('-s', '--sql_create', help='path to CREATE TABLE .sql file')
 	parser.add_argument('-n', '--naive_datatypes', action="store_true", default=False, help='don''t guess datatypes (everything is TEXT, no NULLs)')
+	parser.add_argument('-z', '--sample_size', default=1000, help='how many rows to search to guess datatypes')
+	parser.add_argument('-v', '--verbosity', type=int, default=0, help='print to STDOUT info every VERBOSITY lines of import')
 	args = parser.parse_args()
 
-	convert(args.csv_file, args.db_file, args.table_name, args.sql_create, not args.naive_datatypes)
+	convert(args.csv_file, args.db_file, args.table_name, args.sql_create, not args.naive_datatypes,
+			args.sample_size, args.verbosity)
