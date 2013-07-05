@@ -70,7 +70,11 @@ def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=T
 			for i, row in enumerate(r):
 				if verbosity and i % verbosity == 0:
 					sys.stdout.write("Inserted {0} rows in {1} seconds\n".format( i, time.time() - start))
-				c.execute(sql_insert, [x if len(x)>0 else None for x in row] if guessdatatypes else row)
+				try:
+					c.execute(sql_insert, [x if len(x)>0 else None for x in row] if guessdatatypes else row)
+				except Exception as e:
+					sys.stderr.write(u"Could not import row {0} ({1}):\n{2}".format(
+						i, e, row))
 				total_rows = i
 
 			if verbosity:
