@@ -90,7 +90,12 @@ def guess_datatypes(csvreader, max=100):
 		if r >= max:
 			break
 		for c, cell in enumerate(row):
-			types[c] = [x for x in types[c] if try_parse(cell, x)]
+			try:
+				types[c] = [x for x in types[c] if try_parse(cell, x)]
+			except IndexError as e:
+				sys.stderr.write(u"Wrong number of columns sniffing row {0} "
+								 u"(expected {1}, got {2}): ({3}):\n{4}".format(
+								 r, len(types), len(row), e, row))
 
 	conversion = {int:"INTEGER",long:"INTEGER",float:"REAL",str:"TEXT"}
 
