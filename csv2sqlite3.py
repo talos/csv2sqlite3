@@ -22,7 +22,7 @@ def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=T
 		sqlpath = os.path.join(os.path.dirname(csvpath), '%s.sql' % tablename)
 
 	with open(csvpath, 'rb') as f:
-		
+
 		sample = ''
 		for i, line in enumerate(f):
 		    sample = sample + line
@@ -50,7 +50,7 @@ def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=T
 		# skip the header row
 		if has_header:
 			r.next()
-		
+
 		# write the SQL file if it doesn't exist
 		if not os.path.exists(sqlpath):
 			with open(sqlpath, 'wb') as w:
@@ -67,15 +67,19 @@ def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=T
 
 			# insert csv values
 			sql_insert = 'INSERT INTO `%s` VALUES (%s);' % (tablename, ','.join(['?']*len(fieldnames)))
-			for i, row in enumerate(r):
-				if verbosity and i % verbosity == 0:
-					sys.stdout.write("Inserted {0} rows in {1} seconds\n".format( i, time.time() - start))
-				try:
-					c.execute(sql_insert, [x if len(x)>0 else None for x in row] if guessdatatypes else row)
-				except Exception as e:
-					sys.stderr.write(u"Could not import row {0} ({1}):\n{2}".format(
-						i, e, row))
-				total_rows = i
+			try:
+				for i, row in enumerate(r):
+					if verbosity and i % verbosity == 0:
+						sys.stdout.write("Inserted {0} rows in {1} seconds\n".format( i, time.time() - start))
+					try:
+						c.execute(sql_insert, [x if len(x)>0 else None for x in row] if guessdatatypes else row)
+					except Exception as e:
+						sys.stderr.write(u"Could not import row {0} ({1}):\n{2}".format(
+							i, e, row))
+					total_rows = i
+			except:
+				sys.stderr.write(u"Fatal error iterating near line {}".format(i))
+				raise
 
 			if verbosity:
 				sys.stdout.write("Complete: inserted {0} rows in {1} seconds\n".format(
@@ -116,10 +120,19 @@ if __name__ == '__main__':
 	parser.add_argument('-d', '--db_file', help='path to SQLite3 database file')
 	parser.add_argument('-t', '--table_name', help='name of the table')
 	parser.add_argument('-s', '--sql_create', help='path to CREATE TABLE .sql file')
-	parser.add_argument('-n', '--naive_datatypes', action="store_true", default=False, help='don''t guess datatypes (everything is TEXT, no NULLs)')
-	parser.add_argument('-z', '--sample_size', default=1000, help='how many rows to search to guess datatypes')
+	parser.add_argument('-n', '--naive_datatypes', action="store_true", default=False, help='don\'t guess datatypes (everything is TEXT, no NULLs)')
+	parser.add_argument('-z', '--sample_size', type=int, default=1000, help='how many rows to search to guess datatypes')
 	parser.add_argument('-v', '--verbosity', type=int, default=0, help='print to STDOUT info every VERBOSITY lines of import')
+	parser.add_argument('-p', '--pdb', action="store_true", default=False, help='drop into interactive debugger if there is an error')
 	args = parser.parse_args()
 
-	convert(args.csv_file, args.db_file, args.table_name, args.sql_create, not args.naive_datatypes,
-			args.sample_size, args.verbosity)
+	try:
+		convert(args.csv_file, args.db_file, args.table_name, args.sql_create, not args.naive_datatypes,
+				args.sample_size, args.verbosity)
+	except Exception as e:
+		t, v, tb = sys.exc_info()
+		if args.pdb:
+			import pdb
+			pdb.set_trace()
+		else:
+			raise t, v, tb
