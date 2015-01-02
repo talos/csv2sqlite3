@@ -3,9 +3,10 @@
 import os, sys
 import time
 import csv, sqlite3, argparse
+import json
 
 def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=True,
-			samplesize=1000, verbosity=0):
+			samplesize=1000, verbosity=0, dialect_override=None):
 
 	start = time.time()
 
@@ -25,13 +26,15 @@ def convert(csvpath, dbpath=None, tablename=None, sqlpath=None, guessdatatypes=T
 
 		sample = ''
 		for i, line in enumerate(f):
-		    sample = sample + line
-		    if i >= samplesize:
-		        break
+			sample = sample + line
+			if i >= samplesize:
+				break
 		f.seek(0)
 
 		# sniff the sample data to guess the delimeters, etc
 		dialect = csv.Sniffer().sniff(sample)
+		for k, v in dialect_override.iteritems():
+			setattr(dialect, str(k), str(v))
 		has_header = csv.Sniffer().has_header(sample)
 
 		# column names are either in the first (header) row or c0, c1, c2 if there is not header row
@@ -123,12 +126,13 @@ if __name__ == '__main__':
 	parser.add_argument('-n', '--naive_datatypes', action="store_true", default=False, help='don\'t guess datatypes (everything is TEXT, no NULLs)')
 	parser.add_argument('-z', '--sample_size', type=int, default=1000, help='how many rows to search to guess datatypes')
 	parser.add_argument('-v', '--verbosity', type=int, default=0, help='print to STDOUT info every VERBOSITY lines of import')
+	parser.add_argument('-D', '--dialect', type=str, default='{}', help='options to override the sniffed dialect, specified as python dict')
 	parser.add_argument('-p', '--pdb', action="store_true", default=False, help='drop into interactive debugger if there is an error')
 	args = parser.parse_args()
 
 	try:
 		convert(args.csv_file, args.db_file, args.table_name, args.sql_create, not args.naive_datatypes,
-				args.sample_size, args.verbosity)
+				args.sample_size, args.verbosity, json.loads(args.dialect))
 	except Exception as e:
 		t, v, tb = sys.exc_info()
 		if args.pdb:
